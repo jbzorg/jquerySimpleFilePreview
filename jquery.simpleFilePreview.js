@@ -33,6 +33,7 @@ $('input[type=file]').simpleFilePreview({
     'iconPath': '',                          // String The path to the folder containing icon images (when a preview is unavailable) - should be absolute, but if relative, must be relative to the page the file input is on
     'defaultIcon': 'preview_file.png',       // String The file name to use for the defualt preview icon (when a proper file-type-specific icon cannot be found)
     'icons': {'png': 'preview_png.png', ...} // Object A mapping of file type (second half of mime type) to icon image file (used in combination with the "iconPath" option)
+    'limit': 0                               // Limit files on multiple option
 });
 * 
 * TODO:
@@ -47,23 +48,21 @@ $('input[type=file]').simpleFilePreview({
     'use strict';
 
     $.fn.simpleFilePreview = function(options) {
-        var these = this;
-
-        if (!these || !these.length) {
-            return these;
+        if (!this || !this.length) {
+            return this;
         }
 
         // Set up options (and defaults)
         options = options ? options : {};
         options = $.extend({}, $.simpleFilePreview.defaults, options);
 
-        these.each(function() {
+        this.each(function() {
             setup($(this), options);
         });
 
         // set up global events
         if ($.simpleFilePreview.init) {
-            return these;
+            return this;
         }
 
         var $body = $('body');
@@ -258,12 +257,12 @@ $('input[type=file]').simpleFilePreview({
         });
 
         // return node for fluid chain calling
-        return these;
+        return this;
     };
 
     var limit = function($this, options, add) {
         if (!options.limit) {
-            return these;
+            return false;
         }
 
         var $files = $this.closest('.simpleFilePreview_multi').find('> li');
