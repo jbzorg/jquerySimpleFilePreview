@@ -46,6 +46,7 @@ simple and the UI allows for easy CSS styling.
                             file (used in combination with the "iconPath" option)
                             (default value includes most common file types in this format:
                             {'png': 'preview_png.png', ...}
+'limit': INTEGER            On multiple files, set a limit
 ```
 
 ### Basic Usage
