@@ -1,5 +1,5 @@
 .simpleFilePreview_multiUI {
-    padding: 15px 30px;
+    padding: 0 30px;
     position: relative;
 }
 
@@ -17,7 +17,7 @@
 
 .simpleFilePreview_shifter {
     position: absolute;
-    top: 78px;
+    top: 62px;
     cursor: pointer;
 }
 

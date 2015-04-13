@@ -481,7 +481,6 @@ $('input[type=file]').simpleFilePreview({
                 'doc': 'preview_doc.png',
                 'msword': 'preview_doc.png',
                 'vnd.openxmlformats-officedocument.wordprocessingml.document': 'preview_doc.png',
-                'doc': 'preview_doc.png',
                 'docx': 'preview_doc.png',
                 'ods': 'preview_xls.png',
                 'vnd.ms-excel': 'preview_xls.png',
