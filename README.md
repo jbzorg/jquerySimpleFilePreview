@@ -47,6 +47,10 @@ simple and the UI allows for easy CSS styling.
                             (default value includes most common file types in this format:
                             {'png': 'preview_png.png', ...}
 'limit': INTEGER            On multiple files, set a limit
+'removeMessagePrefix': STRING Prefix for remove message
+                            (defaults to "Remove")
+'removeMessageStub': STRING Stub instead of the file name for remove message
+                            (defaults to "this file")
 ```
 
 ### Basic Usage

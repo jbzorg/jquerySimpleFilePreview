@@ -34,6 +34,8 @@ $('input[type=file]').simpleFilePreview({
     'defaultIcon': 'preview_file.png',       // String The file name to use for the defualt preview icon (when a proper file-type-specific icon cannot be found)
     'icons': {'png': 'preview_png.png', ...} // Object A mapping of file type (second half of mime type) to icon image file (used in combination with the "iconPath" option)
     'limit': 0                               // Limit files on multiple option
+    'removeMessagePrefix': 'Remove'          // Prefix for remove message
+    'removeMessageStub': 'this file'         // Stub instead of the file name for remove message
 });
 * 
 * TODO:
@@ -100,6 +102,11 @@ $('input[type=file]').simpleFilePreview({
 
                 $newN.find('input.simpleFilePreview_formInput')
                     .attr('id', $newN.find('input.simpleFilePreview_formInput').attr('id') + '_' + newId)
+                    .attr('name', function (index, previousValue) {
+                        var previousName = $parents.find('input.simpleFilePreview_formInput').attr('name');
+                        var inputIndex = parseInt(previousName.substring(previousName.indexOf('[') + 1, previousName.indexOf(']')));
+                        return (!isNaN(inputIndex)) ? previousName.substring(0, previousName.indexOf('[') + 1) + ++inputIndex + previousName.substring(previousName.indexOf(']')) : previousValue;
+                    })
                     .val('');
 
                 $parents.after($newN);
@@ -399,10 +406,10 @@ $('input[type=file]').simpleFilePreview({
             $parents.append("<img src='" + src + "'"
                 + " class='simpleFilePreview_preview " + (filename ? 'simpleFilePreview_hasFilename' : '') + "'"
                 + " alt='" + (filename ? filename : 'File Preview') + "'"
-                + " title='Remove " + (filename ? filename : 'this file') + "' />");
+                + " title='" + options.removeMessagePrefix + ' ' + (filename ? filename : options.removeMessageStub) + "' />");
 
             // for tooltips
-            $parents.find('input.simpleFilePreview_formInput').attr('title', "Remove " + (filename ? filename : 'this file'));
+            $parents.find('input.simpleFilePreview_formInput').attr('title', options.removeMessagePrefix + " " + (filename ? filename : options.removeMessageStub));
         }
 
         limit($parents, options);
@@ -452,6 +459,8 @@ $('input[type=file]').simpleFilePreview({
             'iconPath': '',
             'defaultIcon': 'preview_file.png',
             'limit': 0,
+            'removeMessagePrefix': 'Remove',
+            'removeMessageStub': 'this file',
             'icons': {
                 'png': 'preview_png.png',
                 'gif': 'preview_png.png',
