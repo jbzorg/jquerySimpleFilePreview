@@ -36,6 +36,7 @@ $('input[type=file]').simpleFilePreview({
     'limit': 0                               // Limit files on multiple option
     'removeMessagePrefix': 'Remove'          // Prefix for remove message
     'removeMessageStub': 'this file'         // Stub instead of the file name for remove message
+    'radioName': STRING                      // Display the radio buttons (if necessary) to mark one of the files
 });
 * 
 * TODO:
@@ -72,14 +73,14 @@ $('input[type=file]').simpleFilePreview({
         $.simpleFilePreview.init = true;
 
         // open file browser dialog on click of styled "button"
-        $body.on('click', '.simpleFilePreview_input', function(e) {
+        $body.on('click', '.simpleFilePreview_input', function (e) {
             $(this).closest('.simpleFilePreview').find('input.simpleFilePreview_formInput').trigger('click');
             e.preventDefault();
         });
 
         // on click of the actual input (which is invisible), check to see if 
         // we need to clear the input (which is the default action for this plugin)
-        $body.on('click', '.simpleFilePreview input.simpleFilePreview_formInput', function(e) {
+        $body.on('click', '.simpleFilePreview input.simpleFilePreview_formInput', function (e) {
             if (!$(this).val().length) {
                 return this;
             }
@@ -115,6 +116,10 @@ $('input[type=file]').simpleFilePreview({
 
                 if (nw > $parents.closest('.simpleFilePreview_multiClip').width()) {
                     $parents.closest('.simpleFilePreview_multiUI').find('.simpleFilePreview_shiftRight').trigger('click');
+                }
+
+                if (options.radioName) {
+                    $parents.find('input.simpleFilePreview_radio').val($newN.context.files[0].name);
                 }
             }
 
@@ -291,10 +296,11 @@ $('input[type=file]').simpleFilePreview({
         // wrap input with necessary structure
         var $html = $("<" + (isMulti ? 'li' : 'div')
             + " id='simpleFilePreview_" + ($.simpleFilePreview.uid++) + "'"
-            + " class='simpleFilePreview' data-sfpallowmultiple='" + (isMulti ? 1 : 0) + "'>"
+            + " class='simpleFilePreview" + ((options.radioName) ? " simpleFilePreview_withRadio" : "") + "' data-sfpallowmultiple='" + (isMulti ? 1 : 0) + "'>"
             + "<a class='simpleFilePreview_input'><span class='simpleFilePreview_inputButtonText'>"
             + options.buttonContent + "</span></a>"
             + "<span class='simpleFilePreview_remove'>" + options.removeContent + "</span>"
+            + ((options.radioName) ? "<input type='radio' class='simpleFilePreview_radio' name='" + options.radioName + "' value='empty' />" : "")
             + "</" + (isMulti ? 'li' : 'div') + ">");
 
         these.before($html);
@@ -304,12 +310,12 @@ $('input[type=file]').simpleFilePreview({
         // opacity 0, and z-indexed above other elements within the preview container
         these.css({
             width: ($html.width() + 'px'),
-            height: ($html.height() + 'px')
+            height: (($html.height() - ((options.radioName) ? 20 : 0)) + 'px')
         });
 
         // if it's a multi-select we use multiple separate inputs instead to support file preview
         if (isMulti) {
-            $html.wrap("<div class='simpleFilePreview_multiUI'><div class='simpleFilePreview_multiClip'><ul class='simpleFilePreview_multi'></ul></div></div>");
+            $html.wrap("<div class='simpleFilePreview_multiUI'><div class='simpleFilePreview_multiClip'><ul class='simpleFilePreview_multi" + ((options.radioName) ? " simpleFilePreview_withRadio" : "") + "'></ul></div></div>");
             $html.closest('.simpleFilePreview_multiUI')
                 .prepend("<span class='simpleFilePreview_shiftRight simpleFilePreview_shifter'>" + options.shiftRight + "</span>")
                 .append("<span class='simpleFilePreview_shiftLeft simpleFilePreview_shifter'>" + options.shiftLeft + "</span>");
@@ -350,6 +356,10 @@ $('input[type=file]').simpleFilePreview({
                     addOrChangePreview(nn, options.icons[ext], getFilename(exists[i]), options);
                 } else {
                     addOrChangePreview(nn, options.defaultIcon, getFilename(exists[i]), options);
+                }
+
+                if (options.radioName) {
+                    nn.find('input.simpleFilePreview_radio').val(nn.attr('data-sfprid'));
                 }
             }
 
@@ -461,6 +471,7 @@ $('input[type=file]').simpleFilePreview({
             'limit': 0,
             'removeMessagePrefix': 'Remove',
             'removeMessageStub': 'this file',
+            'radioName': null,
             'icons': {
                 'png': 'preview_png.png',
                 'gif': 'preview_png.png',

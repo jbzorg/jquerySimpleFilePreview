@@ -51,6 +51,8 @@ simple and the UI allows for easy CSS styling.
                             (defaults to "Remove")
 'removeMessageStub': STRING Stub instead of the file name for remove message
                             (defaults to "this file")
+'radioName': STRING         Display the radio buttons (if necessary) to mark one of the files
+                            (defaults to null (no display the radio buttons))
 ```
 
 ### Basic Usage

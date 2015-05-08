@@ -44,7 +44,6 @@
     background-color: #f7f7f7;
     text-align: center;
     cursor: pointer;
-    overflow: hidden;
     box-shadow: 0 0 4px 0 #555;
 }
 
@@ -65,7 +64,7 @@
     background-color: #ddd;
 }
 
-.simpleFilePreview input {
+.simpleFilePreview input[type="file"] {
     position: absolute;
     top: 0;
     right: 0;
@@ -103,5 +102,16 @@
     position: absolute;
     top: 5px;
     right: 5px;
+    z-index: 4;
+}
+
+.simpleFilePreview_withRadio {
+    height: 140px;
+}
+
+.simpleFilePreview_radio {
+    position: absolute;
+    top: 110px;
+    right: 48px;
     z-index: 4;
 }
