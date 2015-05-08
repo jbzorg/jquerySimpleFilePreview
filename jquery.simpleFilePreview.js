@@ -1,7 +1,7 @@
 /* Copyright (c) 2012 Jordan Kasper
 * Licensed under the MIT (http://www.opensource.org/licenses/mit-license.php)
 * Copyright notice and license must remain intact for legal use
-* Requires: jQuery 1.2+
+* Requires: jQuery 1.7+
 *
 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
 * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
@@ -36,7 +36,9 @@ $('input[type=file]').simpleFilePreview({
     'limit': 0                               // Limit files on multiple option
     'removeMessagePrefix': 'Remove'          // Prefix for remove message
     'removeMessageStub': 'this file'         // Stub instead of the file name for remove message
-    'radioName': STRING                      // Display the radio buttons (if necessary) to mark one of the files
+    'radioName': null                        // Display the radio buttons (if necessary) to mark one of the files (only multiple mode)
+    'radioCheckedItem': null                 // Preselect radio button
+    'readOnly': false                        // Display with no possibility of modification
 });
 * 
 * TODO:
@@ -58,6 +60,12 @@ $('input[type=file]').simpleFilePreview({
         // Set up options (and defaults)
         options = options ? options : {};
         options = $.extend({}, $.simpleFilePreview.defaults, options);
+
+        // read only mode and radio button incompatible
+        if (options.readOnly) {
+            options.radioName = null;
+            options.radioCheckedItem = null;
+        }
 
         this.each(function() {
             setup($(this), options);
@@ -85,102 +93,108 @@ $('input[type=file]').simpleFilePreview({
                 return this;
             }
 
-            $(this).closest('.simpleFilePreview').find('.simpleFilePreview_preview').trigger('click');
+            if (!options.readOnly) {
+                $(this).closest('.simpleFilePreview').find('.simpleFilePreview_preview').trigger('click');
+            }
 
             e.preventDefault();
         });
 
         // when file input changes, get file contents and show preview (if it's an image)
-        $body.on('change', '.simpleFilePreview input.simpleFilePreview_formInput', function(e) {
-            var $parents = $(this).closest('.simpleFilePreview');
+        $body.on('change', '.simpleFilePreview input.simpleFilePreview_formInput', function (e) {
+            if (!options.readOnly) {
+                var $parents = $(this).closest('.simpleFilePreview');
 
-            // if it's a multi-select, add another selection box to the end
-            // NOTE: this is done first since we clone the previous input
-            // NOTE: the second check is there because IE 8 fires multiple change events for no good reason
-            if (($parents.attr('data-sfpallowmultiple') == 1) && !$parents.find('.simpleFilePreview_preview').length) {
-                var newId = $.simpleFilePreview.uid++;
-                var $newN = $parents.clone(true).attr('id', "simpleFilePreview_" + newId);
+                // if it's a multi-select, add another selection box to the end
+                // NOTE: this is done first since we clone the previous input
+                // NOTE: the second check is there because IE 8 fires multiple change events for no good reason
+                if (($parents.attr('data-sfpallowmultiple') == 1) && !$parents.find('.simpleFilePreview_preview').length) {
+                    var newId = $.simpleFilePreview.uid++;
+                    var $newN = $parents.clone(true).attr('id', "simpleFilePreview_" + newId);
 
-                $newN.find('input.simpleFilePreview_formInput')
-                    .attr('id', $newN.find('input.simpleFilePreview_formInput').attr('id') + '_' + newId)
-                    .attr('name', function (index, previousValue) {
-                        var previousName = $parents.find('input.simpleFilePreview_formInput').attr('name');
-                        var inputIndex = parseInt(previousName.substring(previousName.indexOf('[') + 1, previousName.indexOf(']')));
-                        return (!isNaN(inputIndex)) ? previousName.substring(0, previousName.indexOf('[') + 1) + ++inputIndex + previousName.substring(previousName.indexOf(']')) : previousValue;
-                    })
-                    .val('');
+                    $newN.find('input.simpleFilePreview_formInput')
+                        .attr('id', $newN.find('input.simpleFilePreview_formInput').attr('id') + '_' + newId)
+                        .attr('name', function (index, previousValue) {
+                            var previousName = $parents.find('input.simpleFilePreview_formInput').attr('name');
+                            var inputIndex = parseInt(previousName.substring(previousName.indexOf('[') + 1, previousName.indexOf(']')));
+                            return (!isNaN(inputIndex)) ? previousName.substring(0, previousName.indexOf('[') + 1) + ++inputIndex + previousName.substring(previousName.indexOf(']')) : previousValue;
+                        })
+                        .val('');
 
-                $parents.after($newN);
+                    $parents.after($newN);
 
-                var nw = $parents.closest('.simpleFilePreview_multi').width('+=' + $newN.outerWidth(true)).width();
+                    var nw = $parents.closest('.simpleFilePreview_multi').width('+=' + $newN.outerWidth(true)).width();
 
-                if (nw > $parents.closest('.simpleFilePreview_multiClip').width()) {
-                    $parents.closest('.simpleFilePreview_multiUI').find('.simpleFilePreview_shiftRight').trigger('click');
-                }
-
-                if (options.radioName) {
-                    $parents.find('input.simpleFilePreview_radio').val($newN.context.files[0].name);
-                }
-            }
-
-            if (this.files && this.files[0]) {
-                var exp = new RegExp("^image\/(" + $.simpleFilePreview.previewFileTypes + ")$");
-
-                if (exp.test(this.files[0].type.toLowerCase()) && window.FileReader) {
-                    // show preview of image file
-                    var $FR = new FileReader();
-
-                    $FR.onload = function(e) {
-                        addOrChangePreview($parents, e.target.result, '', options);
-                    };
-
-                    $FR.readAsDataURL(this.files[0]);
-                } else {
-                    // show icon if not an image upload
-                    var m = this.files[0].type.toLowerCase().match(/^\s*[^\/]+\/([a-zA-Z0-9\-\.]+)\s*$/);
-
-                    if (m && m[1] && options.icons[m[1]]) {
-                        addOrChangePreview($parents, options.icons[m[1]], getFilename(this.value), options);
-                    } else {
-                        addOrChangePreview($parents, options.defaultIcon, getFilename(this.value), options);
+                    if (nw > $parents.closest('.simpleFilePreview_multiClip').width()) {
+                        $parents.closest('.simpleFilePreview_multiUI').find('.simpleFilePreview_shiftRight').trigger('click');
                     }
                 }
 
-                return this;
-            }
+                if (this.files && this.files[0]) {
+                    var exp = new RegExp("^image\/(" + $.simpleFilePreview.previewFileTypes + ")$");
 
-            // Any browser not supporting the File API (and FileReader)
+                    if (exp.test(this.files[0].type.toLowerCase()) && window.FileReader) {
+                        // show preview of image file
+                        var $FR = new FileReader();
 
-            // Some versions of IE don't have real paths, and can't support
-            // any other way to do file preview without uploading to the server
-            // If a browser does report a valid path (IE or otherwise), then 
-            // we'll try to get the file preview
+                        $FR.onload = function (e) {
+                            addOrChangePreview($parents, e.target.result, '', options);
+                        };
 
-            var exp = new RegExp("^(" + $.simpleFilePreview.previewFileTypes + ")$");
+                        $FR.readAsDataURL(this.files[0]);
+                    } else {
+                        // show icon if not an image upload
+                        var m = this.files[0].type.toLowerCase().match(/^\s*[^\/]+\/([a-zA-Z0-9\-\.]+)\s*$/);
 
-            var ext = getFileExt(this.value);
-            ext = ext ? ext.toLowerCase() : null;
+                        if (m && m[1] && options.icons[m[1]]) {
+                            addOrChangePreview($parents, options.icons[m[1]], getFilename(this.value), options);
+                        } else {
+                            addOrChangePreview($parents, options.defaultIcon, getFilename(this.value), options);
+                        }
+                    }
 
-            if (ext && !(/fakepath/.test(this.value.toLowerCase())) && exp.test(e)) {
-                // older versions of IE (and some other browsers) report the local 
-                // file path, so try to get a preview that way
-                addOrChangePreview($parents, "file://" + this.value, '', options);
-            } else {
-                // not an image (or using fakepath), so no preview anyway
-                if (options.icons[ext]) {
-                    addOrChangePreview($parents, options.icons[ext], getFilename(this.value), options);
+                    if (options.radioName) {
+                        $parents.find('input.simpleFilePreview_radio').val($parents.context.files[0].name);
+                    }
+
+                    return this;
+                }
+
+                // Any browser not supporting the File API (and FileReader)
+
+                // Some versions of IE don't have real paths, and can't support
+                // any other way to do file preview without uploading to the server
+                // If a browser does report a valid path (IE or otherwise), then 
+                // we'll try to get the file preview
+
+                var exp = new RegExp("^(" + $.simpleFilePreview.previewFileTypes + ")$");
+
+                var ext = getFileExt(this.value);
+                ext = ext ? ext.toLowerCase() : null;
+
+                if (ext && !(/fakepath/.test(this.value.toLowerCase())) && exp.test(e)) {
+                    // older versions of IE (and some other browsers) report the local 
+                    // file path, so try to get a preview that way
+                    addOrChangePreview($parents, "file://" + this.value, '', options);
                 } else {
-                    addOrChangePreview($parents, options.defaultIcon, getFilename(this.value), options);
+                    // not an image (or using fakepath), so no preview anyway
+                    if (options.icons[ext]) {
+                        addOrChangePreview($parents, options.icons[ext], getFilename(this.value), options);
+                    } else {
+                        addOrChangePreview($parents, options.defaultIcon, getFilename(this.value), options);
+                    }
                 }
             }
         });
 
         // show or hide "remove" icon for file preview/icon
-        $body.on('mouseover', '.simpleFilePreview_preview, .simpleFilePreview input.simpleFilePreview_formInput', function() {
-            var $parents = $(this).closest('.simpleFilePreview');
+        $body.on('mouseover', '.simpleFilePreview_preview, .simpleFilePreview input.simpleFilePreview_formInput', function () {
+            if (!options.readOnly) {
+                var $parents = $(this).closest('.simpleFilePreview');
 
-            if ($parents.find('.simpleFilePreview_preview').is(':visible')) {
-                $parents.find('.simpleFilePreview_remove').show();
+                if ($parents.find('.simpleFilePreview_preview').is(':visible')) {
+                    $parents.find('.simpleFilePreview_remove').show();
+                }
             }
         });
 
@@ -189,58 +203,60 @@ $('input[type=file]').simpleFilePreview({
         })
 
         // remove file when preview/icon is clicked
-        $body.on('click', '.simpleFilePreview_preview', function() {
-            var $this = $(this);
-            var $parents = $this.closest('.simpleFilePreview');
+        $body.on('click', '.simpleFilePreview_preview', function () {
+            if (!options.readOnly) {
+                var $this = $(this);
+                var $parents = $this.closest('.simpleFilePreview');
 
-            if ($parents.attr('data-sfpallowmultiple') == 1 && $parents.siblings('.simpleFilePreview').length) {
+                if ($parents.attr('data-sfpallowmultiple') == 1 && $parents.siblings('.simpleFilePreview').length) {
+                    if ($parents.hasClass('simpleFilePreview_existing')) {
+                        $parents.parent().append("<input type='hidden' id='" + $parents.attr('id') + "_remove' name='removeFiles[]' value='" + $parents.attr('data-sfprid') + "' />");
+                    }
+
+                    limit($this, options, 1);
+
+                    $parents.closest('.simpleFilePreview_multi').width('-=' + $parents.width());
+                    $parents.remove();
+
+                    return this;
+                }
+
+                // if it was an existing file, show file input and add "removeFiles" hidden input
                 if ($parents.hasClass('simpleFilePreview_existing')) {
-                    $parents.parent().append("<input type='hidden' id='" + $parents.attr('id') + "_remove' name='removeFiles[]' value='" + $parents.attr('data-sfprid') + "' />");
+                    $parents.find('input.simpleFilePreview_formInput').show();
+                    $parents.append("<input type='hidden' id='" + $parents.attr('id') + "_remove' name='removeFiles[]' value='" + $parents.attr('data-sfprid') + "' />");
+                    $parents.removeClass('simpleFilePreview_existing'); // no longer needed
                 }
 
                 limit($this, options, 1);
 
-                $parents.closest('.simpleFilePreview_multi').width('-=' + $parents.width());
-                $parents.remove();
+                // kill value in the input
+                var $input = $parents.find('input.simpleFilePreview_formInput').val('');
 
-                return this;
-            }
+                // Some browsers (*cough*IE*cough*) do not allow us to set val() 
+                // on a file input, so we have to clone it without the value
+                if ($input && $input.length && $input.val().length) {
+                    var attr = $input.get(0).attributes;
+                    var a = "";
 
-            // if it was an existing file, show file input and add "removeFiles" hidden input
-            if ($parents.hasClass('simpleFilePreview_existing')) {
-                $parents.find('input.simpleFilePreview_formInput').show();
-                $parents.append("<input type='hidden' id='" + $parents.attr('id') + "_remove' name='removeFiles[]' value='" + $parents.attr('data-sfprid') + "' />");
-                $parents.removeClass('simpleFilePreview_existing'); // no longer needed
-            }
-
-            limit($this, options, 1);
-
-            // kill value in the input
-            var $input = $parents.find('input.simpleFilePreview_formInput').val('');
-
-            // Some browsers (*cough*IE*cough*) do not allow us to set val() 
-            // on a file input, so we have to clone it without the value
-            if ($input && $input.length && $input.val().length) {
-                var attr = $input.get(0).attributes;
-                var a = "";
-
-                for (var j = 0, l = attr.length; j < l; ++j) {
-                    if (attr[j].name != 'value' && attr[j].name != 'title') {
-                        a += attr[j].name + "='" + $input.attr(attr[j].name) + "' ";
+                    for (var j = 0, l = attr.length; j < l; ++j) {
+                        if (attr[j].name != 'value' && attr[j].name != 'title') {
+                            a += attr[j].name + "='" + $input.attr(attr[j].name) + "' ";
+                        }
                     }
+
+                    $input.before('<input "' + a + '" />');
+                    $input.remove();
                 }
 
-                $input.before('<input "' + a + '" />');
-                $input.remove();
+                // remove the preview element
+                $this.remove();
+                $parents.find('.simpleFilePreview_filename').remove();
+
+                // show styled input "button"
+                $parents.find('.simpleFilePreview_remove').hide().end()
+                    .find('.simpleFilePreview_input').show();
             }
-
-            // remove the preview element
-            $this.remove();
-            $parents.find('.simpleFilePreview_filename').remove();
-
-            // show styled input "button"
-            $parents.find('.simpleFilePreview_remove').hide().end()
-                .find('.simpleFilePreview_input').show();
         });
 
         // shift buttons for multi-selects
@@ -293,6 +309,12 @@ $('input[type=file]').simpleFilePreview({
         // "multiple" removed because it's handled later manually
         these = these.removeAttr('multiple').addClass('simpleFilePreview_formInput');
 
+        // multiple mode and radio button incompatible
+        if (!isMulti) {
+            options.radioName = null;
+            options.radioCheckedItem = null;
+        }
+
         // wrap input with necessary structure
         var $html = $("<" + (isMulti ? 'li' : 'div')
             + " id='simpleFilePreview_" + ($.simpleFilePreview.uid++) + "'"
@@ -305,6 +327,10 @@ $('input[type=file]').simpleFilePreview({
 
         these.before($html);
         $html.append(these);
+
+        if (options.readOnly) {
+            $html.hide();
+        }
 
         // mostly for IE, the file input must be sized the same as the container, 
         // opacity 0, and z-indexed above other elements within the preview container
@@ -344,6 +370,7 @@ $('input[type=file]').simpleFilePreview({
                 nn.addClass('simpleFilePreview_existing')
                     .attr('data-sfprid', arr ? exists[i] : i)
                     .find('input.simpleFilePreview_formInput').remove();
+                nn.show();
 
                 $html.before(nn);
 
@@ -364,6 +391,10 @@ $('input[type=file]').simpleFilePreview({
             }
 
             $('.simpleFilePreview_multi').width($html.outerWidth(true) * $html.parent().find('.simpleFilePreview').length);
+
+            if (options.radioName) {
+                $html.closest('.simpleFilePreview_multi').find("input[type='radio'][value='" + options.radioCheckedItem + "']").prop("checked", true);
+            }
 
             return these;
         }
@@ -472,6 +503,8 @@ $('input[type=file]').simpleFilePreview({
             'removeMessagePrefix': 'Remove',
             'removeMessageStub': 'this file',
             'radioName': null,
+            'radioCheckedItem': null,
+            'readOnly': false,
             'icons': {
                 'png': 'preview_png.png',
                 'gif': 'preview_png.png',

@@ -114,4 +114,9 @@
     top: 110px;
     right: 48px;
     z-index: 4;
+    display: none;
+}
+
+.simpleFilePreview_input[style="display: none;"] ~ .simpleFilePreview_radio{
+    display: inherit;
 }
