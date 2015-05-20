@@ -57,6 +57,8 @@ simple and the UI allows for easy CSS styling.
                             (defaults to null)
 'readOnly': BOOLEAN         Display with no possibility of modification
                             (defaults to false)
+'ajaxUploadUrl': STRING     URL for upload file via AJAX
+                            (defaults to null)
 ```
 
 ### Basic Usage

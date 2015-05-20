@@ -39,6 +39,7 @@ $('input[type=file]').simpleFilePreview({
     'radioName': null                        // Display the radio buttons (if necessary) to mark one of the files (only multiple mode)
     'radioCheckedItem': null                 // Preselect radio button
     'readOnly': false                        // Display with no possibility of modification
+    'ajaxUploadUrl': null                    // URL for upload file via AJAX
 });
 * 
 * TODO:
@@ -103,6 +104,31 @@ $('input[type=file]').simpleFilePreview({
         // when file input changes, get file contents and show preview (if it's an image)
         $body.on('change', '.simpleFilePreview input.simpleFilePreview_formInput', function (e) {
             if (!options.readOnly) {
+                if (options.ajaxUploadUrl) {
+                    var fd = new FormData();
+                    var cutNameToken = e.target.name.indexOf('[');
+                    if (cutNameToken > -1) {
+                        fd.append(e.target.name.substr(0, cutNameToken), e.target.files[0]);
+                    } else {
+                        fd.append(e.target.name, e.target.files[0]);
+                    }
+
+                    $.ajax({
+                        url: options.ajaxUploadUrl,
+                        type: "POST",
+                        data: fd,
+                        dataType: 'json',
+                        contentType: false,
+                        processData: false,
+                        success: function (res) {
+                            console.log('simpleFilePreview', 'success', res);
+                        },
+                        error: function (res) {
+                            console.log('simpleFilePreview', 'error', res);
+                        }
+                    });
+                }
+
                 var $parents = $(this).closest('.simpleFilePreview');
 
                 // if it's a multi-select, add another selection box to the end
@@ -505,6 +531,7 @@ $('input[type=file]').simpleFilePreview({
             'radioName': null,
             'radioCheckedItem': null,
             'readOnly': false,
+            'ajaxUploadUrl': null,
             'icons': {
                 'png': 'preview_png.png',
                 'gif': 'preview_png.png',
