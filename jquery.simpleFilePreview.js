@@ -33,13 +33,22 @@ $('input[type=file]').simpleFilePreview({
     'iconPath': '',                          // String The path to the folder containing icon images (when a preview is unavailable) - should be absolute, but if relative, must be relative to the page the file input is on
     'defaultIcon': 'preview_file.png',       // String The file name to use for the defualt preview icon (when a proper file-type-specific icon cannot be found)
     'icons': {'png': 'preview_png.png', ...} // Object A mapping of file type (second half of mime type) to icon image file (used in combination with the "iconPath" option)
-    'limit': 0                               // Limit files on multiple option
-    'removeMessagePrefix': 'Remove'          // Prefix for remove message
-    'removeMessageStub': 'this file'         // Stub instead of the file name for remove message
-    'radioName': null                        // Display the radio buttons (if necessary) to mark one of the files (only multiple mode)
-    'radioCheckedItem': null                 // Preselect radio button
-    'readOnly': false                        // Display with no possibility of modification
-    'ajaxUploadUrl': null                    // URL for upload file via AJAX
+    'limit': 0,                              // Limit files on multiple option
+    'removeMessage': {
+        'prefix': 'Remove',                  // Prefix for remove message
+        'stub': 'this file'                  // Stub instead of the file name for remove message
+    },
+    'radio': {                               // Display the radio buttons (if necessary) to mark one of the files (only multiple mode)
+        'name': string,                      // Name of input element
+        'checkedItem': string                // Preselect radio button
+    },
+    'readOnly': false,                       // Display with no possibility of modification
+    'ajaxUpload': {                          // Upload file via AJAX
+        'url': string,                       // URL for upload file
+        'success': function (data, textStatus, jqXHR, inputFileElement),        // callback for ajax success function
+        'error': function (jqXHR, textStatus, errorThrown, inputFileElement),   // callback for ajax error function
+        'compose': function (formData)       // callback for before send FormData customization
+    }
 });
 * 
 * TODO:
@@ -64,22 +73,14 @@ $('input[type=file]').simpleFilePreview({
 
         // read only mode and radio button incompatible
         if (options.readOnly) {
-            options.radioName = null;
-            options.radioCheckedItem = null;
+            options.radio = null;
         }
 
         this.each(function() {
             setup($(this), options);
         });
 
-        // set up global events
-        if ($.simpleFilePreview.init) {
-            return this;
-        }
-
-        var $body = $('body');
-
-        $.simpleFilePreview.init = true;
+        var $body = $(this).closest('.simpleFilePreview_body');
 
         // open file browser dialog on click of styled "button"
         $body.on('click', '.simpleFilePreview_input', function (e) {
@@ -104,7 +105,7 @@ $('input[type=file]').simpleFilePreview({
         // when file input changes, get file contents and show preview (if it's an image)
         $body.on('change', '.simpleFilePreview input.simpleFilePreview_formInput', function (e) {
             if (!options.readOnly) {
-                if (options.ajaxUploadUrl) {
+                if (options.ajaxUpload) {
                     var fd = new FormData();
                     var cutNameToken = e.target.name.indexOf('[');
                     if (cutNameToken > -1) {
@@ -113,18 +114,26 @@ $('input[type=file]').simpleFilePreview({
                         fd.append(e.target.name, e.target.files[0]);
                     }
 
+                    if (options.ajaxUpload.compose) {
+                        options.ajaxUpload.compose(fd);
+                    }
+
                     $.ajax({
-                        url: options.ajaxUploadUrl,
+                        url: options.ajaxUpload.url,
                         type: "POST",
                         data: fd,
                         dataType: 'json',
                         contentType: false,
                         processData: false,
-                        success: function (res) {
-                            console.log('simpleFilePreview', 'success', res);
+                        success: function (data, textStatus, jqXHR) {
+                            if (options.ajaxUpload.success) {
+                                options.ajaxUpload.success(data, textStatus, jqXHR, e.target);
+                            }
                         },
-                        error: function (res) {
-                            console.log('simpleFilePreview', 'error', res);
+                        error: function (jqXHR, textStatus, errorThrown) {
+                            if (options.ajaxUpload.error) {
+                                options.ajaxUpload.error(jqXHR, textStatus, errorThrown, e.target);
+                            }
                         }
                     });
                 }
@@ -179,7 +188,7 @@ $('input[type=file]').simpleFilePreview({
                         }
                     }
 
-                    if (options.radioName) {
+                    if (options.radio) {
                         $parents.find('input.simpleFilePreview_radio').val($parents.context.files[0].name);
                     }
 
@@ -337,18 +346,17 @@ $('input[type=file]').simpleFilePreview({
 
         // multiple mode and radio button incompatible
         if (!isMulti) {
-            options.radioName = null;
-            options.radioCheckedItem = null;
+            options.radio = null;
         }
 
         // wrap input with necessary structure
         var $html = $("<" + (isMulti ? 'li' : 'div')
             + " id='simpleFilePreview_" + ($.simpleFilePreview.uid++) + "'"
-            + " class='simpleFilePreview" + ((options.radioName) ? " simpleFilePreview_withRadio" : "") + "' data-sfpallowmultiple='" + (isMulti ? 1 : 0) + "'>"
+            + " class='simpleFilePreview" + ((options.radio) ? " simpleFilePreview_withRadio" : "") + "' data-sfpallowmultiple='" + (isMulti ? 1 : 0) + "'>"
             + "<a class='simpleFilePreview_input'><span class='simpleFilePreview_inputButtonText'>"
             + options.buttonContent + "</span></a>"
             + "<span class='simpleFilePreview_remove'>" + options.removeContent + "</span>"
-            + ((options.radioName) ? "<input type='radio' class='simpleFilePreview_radio' name='" + options.radioName + "' value='empty' />" : "")
+            + ((options.radio) ? "<input type='radio' class='simpleFilePreview_radio' name='" + options.radio.name + "' value='empty' />" : "")
             + "</" + (isMulti ? 'li' : 'div') + ">");
 
         these.before($html);
@@ -362,15 +370,17 @@ $('input[type=file]').simpleFilePreview({
         // opacity 0, and z-indexed above other elements within the preview container
         these.css({
             width: ($html.width() + 'px'),
-            height: (($html.height() - ((options.radioName) ? 20 : 0)) + 'px')
+            height: (($html.height() - ((options.radio) ? 20 : 0)) + 'px')
         });
 
         // if it's a multi-select we use multiple separate inputs instead to support file preview
         if (isMulti) {
-            $html.wrap("<div class='simpleFilePreview_multiUI'><div class='simpleFilePreview_multiClip'><ul class='simpleFilePreview_multi" + ((options.radioName) ? " simpleFilePreview_withRadio" : "") + "'></ul></div></div>");
+            $html.wrap("<div class='simpleFilePreview_multiUI simpleFilePreview_body'><div class='simpleFilePreview_multiClip'><ul class='simpleFilePreview_multi" + ((options.radio) ? " simpleFilePreview_withRadio" : "") + "'></ul></div></div>");
             $html.closest('.simpleFilePreview_multiUI')
                 .prepend("<span class='simpleFilePreview_shiftRight simpleFilePreview_shifter'>" + options.shiftRight + "</span>")
                 .append("<span class='simpleFilePreview_shiftLeft simpleFilePreview_shifter'>" + options.shiftLeft + "</span>");
+        } else {
+            $html.wrap("<div class='simpleFilePreview_body'></div>");
         }
 
         var exists = options.existingFiles;
@@ -411,15 +421,15 @@ $('input[type=file]').simpleFilePreview({
                     addOrChangePreview(nn, options.defaultIcon, getFilename(exists[i]), options);
                 }
 
-                if (options.radioName) {
+                if (options.radio) {
                     nn.find('input.simpleFilePreview_radio').val(nn.attr('data-sfprid'));
                 }
             }
 
             $('.simpleFilePreview_multi').width($html.outerWidth(true) * $html.parent().find('.simpleFilePreview').length);
 
-            if (options.radioName) {
-                $html.closest('.simpleFilePreview_multi').find("input[type='radio'][value='" + options.radioCheckedItem + "']").prop("checked", true);
+            if (options.radio) {
+                $html.closest('.simpleFilePreview_multi').find("input[type='radio'][value='" + options.radio.checkedItem + "']").prop("checked", true);
             }
 
             return these;
@@ -473,10 +483,10 @@ $('input[type=file]').simpleFilePreview({
             $parents.append("<img src='" + src + "'"
                 + " class='simpleFilePreview_preview " + (filename ? 'simpleFilePreview_hasFilename' : '') + "'"
                 + " alt='" + (filename ? filename : 'File Preview') + "'"
-                + " title='" + options.removeMessagePrefix + ' ' + (filename ? filename : options.removeMessageStub) + "' />");
+                + " title='" + options.removeMessage.prefix + ' ' + (filename ? filename : options.removeMessage.stub) + "' />");
 
             // for tooltips
-            $parents.find('input.simpleFilePreview_formInput').attr('title', options.removeMessagePrefix + " " + (filename ? filename : options.removeMessageStub));
+            $parents.find('input.simpleFilePreview_formInput').attr('title', options.removeMessage.prefix + " " + (filename ? filename : options.removeMessage.stub));
         }
 
         limit($parents, options);
@@ -526,12 +536,13 @@ $('input[type=file]').simpleFilePreview({
             'iconPath': '',
             'defaultIcon': 'preview_file.png',
             'limit': 0,
-            'removeMessagePrefix': 'Remove',
-            'removeMessageStub': 'this file',
-            'radioName': null,
-            'radioCheckedItem': null,
+            'removeMessage': {
+                'prefix': 'Remove',
+                'stub': 'this file',
+            },
+            'radio': null,
             'readOnly': false,
-            'ajaxUploadUrl': null,
+            'ajaxUpload': null,
             'icons': {
                 'png': 'preview_png.png',
                 'gif': 'preview_png.png',

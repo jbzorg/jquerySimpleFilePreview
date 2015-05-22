@@ -47,18 +47,30 @@ simple and the UI allows for easy CSS styling.
                             (default value includes most common file types in this format:
                             {'png': 'preview_png.png', ...}
 'limit': INTEGER            On multiple files, set a limit
-'removeMessagePrefix': STRING Prefix for remove message
+'removeMessage': {
+    'prefix': STRING        Prefix for remove message
                             (defaults to "Remove")
-'removeMessageStub': STRING Stub instead of the file name for remove message
-                            (defaults to "this file")
-'radioName': STRING         Display the radio buttons (if necessary) to mark one of the files (only multiple mode). Name of radio button elements
+    'stub': STRING          Stub instead of the file name for remove message
+}                           (defaults to "this file")
+'radio': {                  Display the radio buttons (if necessary) to mark one of the files (only multiple mode)
                             (defaults to null (no display the radio buttons))
-'radioCheckedItem': STRING  Preselect radio button
+    'name': STRING          Name of input element
                             (defaults to null)
+    'checkedItem': STRING  Preselect radio button
+}                           (defaults to null)
 'readOnly': BOOLEAN         Display with no possibility of modification
                             (defaults to false)
-'ajaxUploadUrl': STRING     URL for upload file via AJAX
+'ajaxUpload': {             Upload file via AJAX
                             (defaults to null)
+    'url': STRING           URL for upload file
+                            (defaults to null)
+    'success': FUNCTION     callback for ajax success function
+                            (defaults to null)
+    'error': FUNCTION       callback for ajax error function
+                            (defaults to null)
+    'compose': FUNCTION     callback for before send FormData customization
+}                           (defaults to null)
+
 ```
 
 ### Basic Usage
