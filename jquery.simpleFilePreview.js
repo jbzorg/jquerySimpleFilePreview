@@ -48,7 +48,8 @@ $('input[type=file]').simpleFilePreview({
         'success': function (data, textStatus, jqXHR, inputFileElement),        // callback for ajax success function
         'error': function (jqXHR, textStatus, errorThrown, inputFileElement),   // callback for ajax error function
         'compose': function (formData)       // callback for before send FormData customization
-    }
+    },
+    'beforeRemove': function (element),      // callback for before remove element
 });
 * 
 * TODO:
@@ -242,6 +243,10 @@ $('input[type=file]').simpleFilePreview({
             if (!options.readOnly) {
                 var $this = $(this);
                 var $parents = $this.closest('.simpleFilePreview');
+
+                if (options.beforeRemove != null) {
+                    options.beforeRemove($parents);
+                }
 
                 if ($parents.attr('data-sfpallowmultiple') == 1 && $parents.siblings('.simpleFilePreview').length) {
                     if ($parents.hasClass('simpleFilePreview_existing')) {
@@ -543,6 +548,7 @@ $('input[type=file]').simpleFilePreview({
             'radio': null,
             'readOnly': false,
             'ajaxUpload': null,
+            'beforeRemove': null,
             'icons': {
                 'png': 'preview_png.png',
                 'gif': 'preview_png.png',

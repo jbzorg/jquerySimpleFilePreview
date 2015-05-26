@@ -70,6 +70,8 @@ simple and the UI allows for easy CSS styling.
                             (defaults to null)
     'compose': FUNCTION     callback for before send FormData customization
 }                           (defaults to null)
+'beforeRemove'              callback for before remove element
+                            (defaults to null)
 
 ```
 
