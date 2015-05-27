@@ -5,8 +5,7 @@ SimpleFilePreview is a jQuery plug-in that allows for pre-form submission
 file previews on images and icon previews for non-images. The syntax is extremely
 simple and the UI allows for easy CSS styling.
   
-**Requires: jQuery 1.9.1+**
-**Requires: Bootstrap 3.3.4+ (for progressbar only)**
+**Requires: jQuery 1.9.1+, Bootstrap 3.3.4+ (for progressbar only)**
 
 ### Main Features
 
