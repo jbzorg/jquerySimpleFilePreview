@@ -1,7 +1,8 @@
 /* Copyright (c) 2012 Jordan Kasper
 * Licensed under the MIT (http://www.opensource.org/licenses/mit-license.php)
 * Copyright notice and license must remain intact for legal use
-* Requires: jQuery 1.7+
+* Requires: jQuery 1.9.1+
+*           Bootstrap 3.3.4+ (for progressbar only)
 *
 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
 * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
@@ -45,6 +46,7 @@ $('input[type=file]').simpleFilePreview({
     'readOnly': false,                       // Display with no possibility of modification
     'ajaxUpload': {                          // Upload file via AJAX
         'url': string,                       // URL for upload file
+        'progressbar': false,                // progressbar for upload file (required Bootstrap)
         'success': function (data, textStatus, jqXHR, inputFileElement),        // callback for ajax success function
         'error': function (jqXHR, textStatus, errorThrown, inputFileElement),   // callback for ajax error function
         'compose': function (formData)       // callback for before send FormData customization
@@ -107,6 +109,7 @@ $('input[type=file]').simpleFilePreview({
         $body.on('change', '.simpleFilePreview input.simpleFilePreview_formInput', function (e) {
             if (!options.readOnly) {
                 if (options.ajaxUpload) {
+                    var $this = $(this);
                     var fd = new FormData();
                     var cutNameToken = e.target.name.indexOf('[');
                     if (cutNameToken > -1) {
@@ -119,6 +122,10 @@ $('input[type=file]').simpleFilePreview({
                         options.ajaxUpload.compose(fd);
                     }
 
+                    if (options.ajaxUpload.progressbar) {
+                        $this.parent().find('.simpleFilePreview_progress').show();
+                    }
+
                     $.ajax({
                         url: options.ajaxUpload.url,
                         type: "POST",
@@ -127,14 +134,32 @@ $('input[type=file]').simpleFilePreview({
                         contentType: false,
                         processData: false,
                         success: function (data, textStatus, jqXHR) {
+                            if (options.ajaxUpload.progressbar) {
+                                $this.parent().find('.simpleFilePreview_progress').hide();
+                            }
                             if (options.ajaxUpload.success) {
                                 options.ajaxUpload.success(data, textStatus, jqXHR, e.target);
                             }
                         },
                         error: function (jqXHR, textStatus, errorThrown) {
+                            if (options.ajaxUpload.progressbar) {
+                                $this.parent().find('.simpleFilePreview_progress').hide();
+                            }
                             if (options.ajaxUpload.error) {
                                 options.ajaxUpload.error(jqXHR, textStatus, errorThrown, e.target);
                             }
+                        },
+                        xhr: function () {
+                            var xhr = new window.XMLHttpRequest();
+                            //Upload progress
+                            xhr.upload.addEventListener("progress", function (evt) {
+                                if (evt.lengthComputable && options.ajaxUpload.progressbar) {
+                                    var percentComplete = evt.loaded * 100 / evt.total;
+                                    var progressbar = $this.parent().find('.simpleFilePreview_progress div');
+                                    progressbar.css({ width: percentComplete + '%' }).attr('aria-valuenow', percentComplete);
+                                }
+                            }, false);
+                            return xhr;
                         }
                     });
                 }
@@ -147,6 +172,10 @@ $('input[type=file]').simpleFilePreview({
                 if (($parents.attr('data-sfpallowmultiple') == 1) && !$parents.find('.simpleFilePreview_preview').length) {
                     var newId = $.simpleFilePreview.uid++;
                     var $newN = $parents.clone(true).attr('id', "simpleFilePreview_" + newId);
+
+                    if (options.ajaxUpload.progressbar) {
+                        $newN.find('.simpleFilePreview_progress').hide();
+                    }
 
                     $newN.find('input.simpleFilePreview_formInput')
                         .attr('id', $newN.find('input.simpleFilePreview_formInput').attr('id') + '_' + newId)
@@ -362,6 +391,7 @@ $('input[type=file]').simpleFilePreview({
             + options.buttonContent + "</span></a>"
             + "<span class='simpleFilePreview_remove'>" + options.removeContent + "</span>"
             + ((options.radio) ? "<input type='radio' class='simpleFilePreview_radio' name='" + options.radio.name + "' value='empty' />" : "")
+            + ((options.ajaxUpload.progressbar) ? "<div class='progress simpleFilePreview_progress'><div class='progress-bar progress-bar-striped active' role='progressbar' aria-valuenow='0' aria-valuemin='0' aria-valuemax='100' style='width:0%'></div></div>" : "")
             + "</" + (isMulti ? 'li' : 'div') + ">");
 
         these.before($html);

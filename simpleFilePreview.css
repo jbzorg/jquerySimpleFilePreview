@@ -121,3 +121,11 @@
 .simpleFilePreview_input[style="display: none;"] ~ .simpleFilePreview_radio{
     display: inherit;
 }
+
+.simpleFilePreview_progress {
+    z-index: 10;
+    position: absolute;
+    width: 100%;
+    top: 60px;
+    display: none;
+}
