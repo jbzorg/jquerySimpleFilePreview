@@ -101,8 +101,12 @@ $('input[type=file]').simpleFilePreview();
 
 You can see [more examples](http://jordankasper.com/jquery/preview/examples) on my personal site.
 
-### Tested Browsers</h3>
+### Tested Browsers
 
 * Firefox 16+
 * Internet Explorer 8+
 * Chrome 22+
+
+### NuGet repository
+
+https://www.myget.org/F/zorg-public/api/v2
