@@ -3,6 +3,7 @@
 * Copyright notice and license must remain intact for legal use
 * Requires: jQuery 1.9.1+
 *           Bootstrap 3.3.4+ (for progressbar only)
+*           jQuery UI 1.11.4+ (for remove dialog only)    
 *
 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
 * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
@@ -46,12 +47,19 @@ $('input[type=file]').simpleFilePreview({
     'readOnly': false,                       // Display with no possibility of modification
     'ajaxUpload': {                          // Upload file via AJAX
         'url': string,                       // URL for upload file
-        'progressbar': false,                // progressbar for upload file (required Bootstrap)
-        'success': function (data, textStatus, jqXHR, inputFileElement),        // callback for ajax success function
-        'error': function (jqXHR, textStatus, errorThrown, inputFileElement),   // callback for ajax error function
-        'compose': function (formData)       // callback for before send FormData customization
+        'progressbar': false,                // Progressbar for upload file (required Bootstrap)
+        'success': function (data, textStatus, jqXHR, inputFileElement),        // Callback for ajax success function
+        'error': function (jqXHR, textStatus, errorThrown, inputFileElement),   // Callback for ajax error function
+        'compose': function (formData)       // Callback for before send FormData customization
     },
-    'beforeRemove': function (element),      // callback for before remove element
+    'beforeRemove': function (element),      // Callback for before remove element
+    'removeDialog': {                        // Dialog for remove file (required jQuery UI)
+        'id': string,                        // Dialog Id
+        'title': string,                     // Title dialog
+        'text': string,                      // Body text
+        'ok': string,                        // Text for OK button
+        'cancel': string,                    // Text for Cancel button
+    },
 });
 * 
 * TODO:
@@ -84,6 +92,23 @@ $('input[type=file]').simpleFilePreview({
         });
 
         var $body = $(this).closest('.simpleFilePreview_body');
+
+        if (options.removeDialog) {
+            if (!options.removeDialog.id) { options.removeDialog.id = $(this).id + '_remove_dialog'; }
+            if (!options.removeDialog.title) { options.removeDialog.title = 'Remove'; }
+            if (!options.removeDialog.text) { options.removeDialog.text = 'Are you sure?'; }
+            if (!options.removeDialog.ok) { options.removeDialog.ok = 'Ok'; }
+            if (!options.removeDialog.cancel) { options.removeDialog.cancel = 'Cancel'; }
+
+            $('<div id="' + options.removeDialog.id + '" title="' + options.removeDialog.title + '"><p>' +
+                '<span class="ui-icon ui-icon-alert"></span>' + 
+                options.removeDialog.text +
+                '</p></div>').dialog({
+                    autoOpen: false,
+                    resizable: false,
+                    modal: true,
+                });
+        }
 
         // open file browser dialog on click of styled "button"
         $body.on('click', '.simpleFilePreview_input', function (e) {
@@ -270,61 +295,26 @@ $('input[type=file]').simpleFilePreview({
         // remove file when preview/icon is clicked
         $body.on('click', '.simpleFilePreview_preview', function () {
             if (!options.readOnly) {
-                var $this = $(this);
-                var $parents = $this.closest('.simpleFilePreview');
-
-                if (options.beforeRemove != null) {
-                    options.beforeRemove($parents);
+                var $pic = $(this);
+                if (!options.removeDialog) {
+                    remove($pic, options);
+                } else {
+                    var $dialog = $('#' + options.removeDialog.id);
+                    $dialog.dialog('option',
+                        'buttons', [{
+                            text: options.removeDialog.ok,
+                            click: function () {
+                                remove($pic, options);
+                                $(this).dialog("close");
+                            }
+                        }, {
+                            text: options.removeDialog.cancel,
+                            click: function () {
+                                $(this).dialog("close");
+                            }
+                        }]);
+                    $dialog.dialog("open");
                 }
-
-                if ($parents.attr('data-sfpallowmultiple') == 1 && $parents.siblings('.simpleFilePreview').length) {
-                    if ($parents.hasClass('simpleFilePreview_existing')) {
-                        $parents.parent().append("<input type='hidden' id='" + $parents.attr('id') + "_remove' name='removeFiles[]' value='" + $parents.attr('data-sfprid') + "' />");
-                    }
-
-                    limit($this, options, 1);
-
-                    $parents.closest('.simpleFilePreview_multi').width('-=' + $parents.width());
-                    $parents.remove();
-
-                    return this;
-                }
-
-                // if it was an existing file, show file input and add "removeFiles" hidden input
-                if ($parents.hasClass('simpleFilePreview_existing')) {
-                    $parents.find('input.simpleFilePreview_formInput').show();
-                    $parents.append("<input type='hidden' id='" + $parents.attr('id') + "_remove' name='removeFiles[]' value='" + $parents.attr('data-sfprid') + "' />");
-                    $parents.removeClass('simpleFilePreview_existing'); // no longer needed
-                }
-
-                limit($this, options, 1);
-
-                // kill value in the input
-                var $input = $parents.find('input.simpleFilePreview_formInput').val('');
-
-                // Some browsers (*cough*IE*cough*) do not allow us to set val() 
-                // on a file input, so we have to clone it without the value
-                if ($input && $input.length && $input.val().length) {
-                    var attr = $input.get(0).attributes;
-                    var a = "";
-
-                    for (var j = 0, l = attr.length; j < l; ++j) {
-                        if (attr[j].name != 'value' && attr[j].name != 'title') {
-                            a += attr[j].name + "='" + $input.attr(attr[j].name) + "' ";
-                        }
-                    }
-
-                    $input.before('<input "' + a + '" />');
-                    $input.remove();
-                }
-
-                // remove the preview element
-                $this.remove();
-                $parents.find('.simpleFilePreview_filename').remove();
-
-                // show styled input "button"
-                $parents.find('.simpleFilePreview_remove').hide().end()
-                    .find('.simpleFilePreview_input').show();
             }
         });
 
@@ -355,6 +345,63 @@ $('input[type=file]').simpleFilePreview({
 
         // return node for fluid chain calling
         return this;
+    };
+
+    var remove = function ($this, options) {
+        var $parents = $this.closest('.simpleFilePreview');
+
+        if (options.beforeRemove != null) {
+            options.beforeRemove($parents);
+        }
+
+        if ($parents.attr('data-sfpallowmultiple') == 1 && $parents.siblings('.simpleFilePreview').length) {
+            if ($parents.hasClass('simpleFilePreview_existing')) {
+                $parents.parent().append("<input type='hidden' id='" + $parents.attr('id') + "_remove' name='removeFiles[]' value='" + $parents.attr('data-sfprid') + "' />");
+            }
+
+            limit($this, options, 1);
+
+            $parents.closest('.simpleFilePreview_multi').width('-=' + $parents.width());
+            $parents.remove();
+
+            return this;
+        }
+
+        // if it was an existing file, show file input and add "removeFiles" hidden input
+        if ($parents.hasClass('simpleFilePreview_existing')) {
+            $parents.find('input.simpleFilePreview_formInput').show();
+            $parents.append("<input type='hidden' id='" + $parents.attr('id') + "_remove' name='removeFiles[]' value='" + $parents.attr('data-sfprid') + "' />");
+            $parents.removeClass('simpleFilePreview_existing'); // no longer needed
+        }
+
+        limit($this, options, 1);
+
+        // kill value in the input
+        var $input = $parents.find('input.simpleFilePreview_formInput').val('');
+
+        // Some browsers (*cough*IE*cough*) do not allow us to set val() 
+        // on a file input, so we have to clone it without the value
+        if ($input && $input.length && $input.val().length) {
+            var attr = $input.get(0).attributes;
+            var a = "";
+
+            for (var j = 0, l = attr.length; j < l; ++j) {
+                if (attr[j].name != 'value' && attr[j].name != 'title') {
+                    a += attr[j].name + "='" + $input.attr(attr[j].name) + "' ";
+                }
+            }
+
+            $input.before('<input "' + a + '" />');
+            $input.remove();
+        }
+
+        // remove the preview element
+        $this.remove();
+        $parents.find('.simpleFilePreview_filename').remove();
+
+        // show styled input "button"
+        $parents.find('.simpleFilePreview_remove').hide().end()
+            .find('.simpleFilePreview_input').show();
     };
 
     var limit = function($this, options, add) {
@@ -579,6 +626,7 @@ $('input[type=file]').simpleFilePreview({
             'readOnly': false,
             'ajaxUpload': null,
             'beforeRemove': null,
+            'removeDialog': null,
             'icons': {
                 'png': 'preview_png.png',
                 'gif': 'preview_png.png',

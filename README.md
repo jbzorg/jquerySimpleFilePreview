@@ -5,7 +5,7 @@ SimpleFilePreview is a jQuery plug-in that allows for pre-form submission
 file previews on images and icon previews for non-images. The syntax is extremely
 simple and the UI allows for easy CSS styling.
   
-**Requires: jQuery 1.9.1+, Bootstrap 3.3.4+ (for progressbar only)**
+**Requires: jQuery 1.9.1+, Bootstrap 3.3.4+ (for progressbar only), jQuery UI 1.11.4+ (for remove dialog only)**
 
 ### Main Features
 
@@ -64,16 +64,30 @@ simple and the UI allows for easy CSS styling.
                             (defaults to null)
     'url': STRING           URL for upload file
                             (defaults to null)
-    'progressbar': BOOLEAN  progressbar for upload file (required Bootstrap)
+    'progressbar': BOOLEAN  Progressbar for upload file (required Bootstrap)
                             (defaults to false)
-    'success': FUNCTION     callback for ajax success function
+    'success': FUNCTION     Callback for ajax success function
                             (defaults to null)
-    'error': FUNCTION       callback for ajax error function
+    'error': FUNCTION       Callback for ajax error function
                             (defaults to null)
-    'compose': FUNCTION     callback for before send FormData customization
+    'compose': FUNCTION     Callback for before send FormData customization
 }                           (defaults to null)
-'beforeRemove'              callback for before remove element
+'beforeRemove'              Callback for before remove element
                             (defaults to null)
+'removeDialog': {           Dialog for remove file (required jQuery UI)
+                            (defaults to null)
+    'id': STRING            Dialog Id
+                            (defaults to "***_remove_dialog")
+    'title': STRING         Title dialog
+                            (defaults to "Remove")
+    'text': STRING          Body text
+                            (defaults to "Are you sure?")
+    'ok': STRING            Text for OK button
+                            (defaults to "Ok")
+    'cancel': STRING        Text for Cancel button
+                            (defaults to "Cancel")
+}
+
 
 ```
 
