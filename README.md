@@ -5,7 +5,7 @@ SimpleFilePreview is a jQuery plug-in that allows for pre-form submission
 file previews on images and icon previews for non-images. The syntax is extremely
 simple and the UI allows for easy CSS styling.
   
-**Requires: jQuery 1.9.1+, Bootstrap 3.3.4+ (for progressbar only), jQuery UI 1.11.4+ (for remove dialog only)**
+**Requires: jQuery 1.9.1+, Bootstrap 3.3.4+ (for progressbar only), jQuery UI 1.11.4+ (for dialog only)**
 
 ### Main Features
 
@@ -87,6 +87,29 @@ simple and the UI allows for easy CSS styling.
     'cancel': STRING        Text for Cancel button
                             (defaults to "Cancel")
 }
+'contextMenu': {            Context menu for select file source
+                            (defaults to null)
+    'fileText': STRING      Text for file option
+                            (defaults to "Open file")
+    'linkText': STRING      Text for link option
+                            (defaults to "Open link")
+    'id': STRING            Dialog Id
+                            (defaults to "***_openlink_dialog")
+    'title': STRING         Title dialog
+                            (defaults to "Open link")
+    'text': STRING          Body text
+                            (defaults to "Please enter link to file or image")
+    'optionName': STRING    Name of input link to image or file
+                            (defaults to "Link")
+    'ok': STRING            Text for OK button
+                            (defaults to "Ok")
+    'cancel': STRING        Text for Cancel button
+                            (defaults to "Cancel")
+    'inputName': STRING     Name of hidden input element
+                            (defaults to "input_openlink_dialog")
+}
+'parentSelector': STRING    Parent selector for component
+                            (defaults to null)
 
 
 ```

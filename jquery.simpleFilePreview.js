@@ -3,7 +3,7 @@
 * Copyright notice and license must remain intact for legal use
 * Requires: jQuery 1.9.1+
 *           Bootstrap 3.3.4+ (for progressbar only)
-*           jQuery UI 1.11.4+ (for remove dialog only)    
+*           jQuery UI 1.11.4+ (for dialog only)    
 *
 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
 * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
@@ -60,6 +60,18 @@ $('input[type=file]').simpleFilePreview({
         'ok': string,                        // Text for OK button
         'cancel': string,                    // Text for Cancel button
     },
+    'contextMenu': {                         // Context menu for select file source
+        'fileText': string,                  // Text for file option
+        'linkText': string,                  // Text for link option
+        'id': string,                        // Dialog Id
+        'title': string,                     // Title dialog
+        'text': string,                      // Body text
+        'optionName': string,                // Name of input link to image or file
+        'ok': string,                        // Text for OK button
+        'cancel': string,                    // Text for Cancel button
+        'inputName': string                  // Name of hidden input element
+    },
+    'parentSelector': string,                // Parent selector for component
 });
 * 
 * TODO:
@@ -70,10 +82,10 @@ $('input[type=file]').simpleFilePreview({
 *   0.1 Initial release
 *   
 */
-;(function($) {
+; (function ($) {
     'use strict';
 
-    $.fn.simpleFilePreview = function(options) {
+    $.fn.simpleFilePreview = function (options) {
         if (!this || !this.length) {
             return this;
         }
@@ -87,12 +99,6 @@ $('input[type=file]').simpleFilePreview({
             options.radio = null;
         }
 
-        this.each(function() {
-            setup($(this), options);
-        });
-
-        var $body = $(this).closest('.simpleFilePreview_body');
-
         if (options.removeDialog) {
             if (!options.removeDialog.id) { options.removeDialog.id = $(this).id + '_remove_dialog'; }
             if (!options.removeDialog.title) { options.removeDialog.title = 'Remove'; }
@@ -101,7 +107,7 @@ $('input[type=file]').simpleFilePreview({
             if (!options.removeDialog.cancel) { options.removeDialog.cancel = 'Cancel'; }
 
             $('<div id="' + options.removeDialog.id + '" title="' + options.removeDialog.title + '"><p>' +
-                '<span class="ui-icon ui-icon-alert"></span>' + 
+                '<span class="ui-icon ui-icon-alert"></span>' +
                 options.removeDialog.text +
                 '</p></div>').dialog({
                     autoOpen: false,
@@ -109,6 +115,54 @@ $('input[type=file]').simpleFilePreview({
                     modal: true,
                 });
         }
+
+        if (options.contextMenu) {
+            if (!options.contextMenu.fileText) { options.contextMenu.fileText = 'Open file'; }
+            if (!options.contextMenu.linkText) { options.contextMenu.linkText = 'Open link'; }
+            if (!options.contextMenu.id) { options.contextMenu.id = $(this).id + '_openlink_dialog'; }
+            if (!options.contextMenu.title) { options.contextMenu.title = 'Open link'; }
+            if (!options.contextMenu.text) { options.contextMenu.text = 'Please enter link to file or image'; }
+            if (!options.contextMenu.optionName) { options.contextMenu.optionName = 'Link'; }
+            if (!options.contextMenu.ok) { options.contextMenu.ok = 'Ok'; }
+            if (!options.contextMenu.cancel) { options.contextMenu.cancel = 'Cancel'; }
+            if (!options.contextMenu.inputName) { options.contextMenu.inputName = 'input_openlink_dialog'; }
+
+            $('<div id="' + options.contextMenu.id + '" title="' + options.contextMenu.title + '"><p>' +
+                options.contextMenu.text +
+                '<form><fieldset>' +
+                '<label for="' + options.contextMenu.id + '_link">' + options.contextMenu.optionName + '</label>' +
+                '<input type="text" name="link" id="' + options.contextMenu.id + '_link" class="text ui-widget-content ui-corner-all">' +
+                '</fieldset></form>' +
+                '</p></div>').dialog({
+                    autoOpen: false,
+                    resizable: false,
+                    modal: true,
+                });
+
+            var selector = ((options.parentSelector) ? options.parentSelector : 'body') + ' li:has(a.simpleFilePreview_input:visible)';
+            context.init({ preventDoubleContext: false });
+            context.settings({ compress: true });
+            context.attach(selector, [
+                {
+                    text: options.contextMenu.fileText,
+                    action: function (e) {
+                        $(selector).find('.simpleFilePreview_input').trigger('click');
+                    }
+                },
+                {
+                    text: options.contextMenu.linkText,
+                    action: function (e) {
+                        openLinkDialog(e, options);
+                    }
+                },
+            ]);
+        }
+
+        this.each(function () {
+            setup($(this), options);
+        });
+
+        var $body = ((options.parentSelector) ? $(options.parentSelector + ' .simpleFilePreview_body') : $(this).closest('.simpleFilePreview_body'));
 
         // open file browser dialog on click of styled "button"
         $body.on('click', '.simpleFilePreview_input', function (e) {
@@ -132,149 +186,7 @@ $('input[type=file]').simpleFilePreview({
 
         // when file input changes, get file contents and show preview (if it's an image)
         $body.on('change', '.simpleFilePreview input.simpleFilePreview_formInput', function (e) {
-            if (!options.readOnly) {
-                if (options.ajaxUpload) {
-                    var $this = $(this);
-                    var fd = new FormData();
-                    var cutNameToken = e.target.name.indexOf('[');
-                    if (cutNameToken > -1) {
-                        fd.append(e.target.name.substr(0, cutNameToken), e.target.files[0]);
-                    } else {
-                        fd.append(e.target.name, e.target.files[0]);
-                    }
-
-                    if (options.ajaxUpload.compose) {
-                        options.ajaxUpload.compose(fd);
-                    }
-
-                    if (options.ajaxUpload.progressbar) {
-                        $this.parent().find('.simpleFilePreview_progress').show();
-                    }
-
-                    $.ajax({
-                        url: options.ajaxUpload.url,
-                        type: "POST",
-                        data: fd,
-                        dataType: 'json',
-                        contentType: false,
-                        processData: false,
-                        success: function (data, textStatus, jqXHR) {
-                            if (options.ajaxUpload.progressbar) {
-                                $this.parent().find('.simpleFilePreview_progress').hide();
-                            }
-                            if (options.ajaxUpload.success) {
-                                options.ajaxUpload.success(data, textStatus, jqXHR, e.target);
-                            }
-                        },
-                        error: function (jqXHR, textStatus, errorThrown) {
-                            if (options.ajaxUpload.progressbar) {
-                                $this.parent().find('.simpleFilePreview_progress').hide();
-                            }
-                            if (options.ajaxUpload.error) {
-                                options.ajaxUpload.error(jqXHR, textStatus, errorThrown, e.target);
-                            }
-                        },
-                        xhr: function () {
-                            var xhr = new window.XMLHttpRequest();
-                            //Upload progress
-                            xhr.upload.addEventListener("progress", function (evt) {
-                                if (evt.lengthComputable && options.ajaxUpload.progressbar) {
-                                    var percentComplete = evt.loaded * 100 / evt.total;
-                                    var progressbar = $this.parent().find('.simpleFilePreview_progress div');
-                                    progressbar.css({ width: percentComplete + '%' }).attr('aria-valuenow', percentComplete);
-                                }
-                            }, false);
-                            return xhr;
-                        }
-                    });
-                }
-
-                var $parents = $(this).closest('.simpleFilePreview');
-
-                // if it's a multi-select, add another selection box to the end
-                // NOTE: this is done first since we clone the previous input
-                // NOTE: the second check is there because IE 8 fires multiple change events for no good reason
-                if (($parents.attr('data-sfpallowmultiple') == 1) && !$parents.find('.simpleFilePreview_preview').length) {
-                    var newId = $.simpleFilePreview.uid++;
-                    var $newN = $parents.clone(true).attr('id', "simpleFilePreview_" + newId);
-
-                    if (options.ajaxUpload.progressbar) {
-                        $newN.find('.simpleFilePreview_progress').hide();
-                    }
-
-                    $newN.find('input.simpleFilePreview_formInput')
-                        .attr('id', $newN.find('input.simpleFilePreview_formInput').attr('id') + '_' + newId)
-                        .attr('name', function (index, previousValue) {
-                            var previousName = $parents.find('input.simpleFilePreview_formInput').attr('name');
-                            var inputIndex = parseInt(previousName.substring(previousName.indexOf('[') + 1, previousName.indexOf(']')));
-                            return (!isNaN(inputIndex)) ? previousName.substring(0, previousName.indexOf('[') + 1) + ++inputIndex + previousName.substring(previousName.indexOf(']')) : previousValue;
-                        })
-                        .val('');
-
-                    $parents.after($newN);
-
-                    var nw = $parents.closest('.simpleFilePreview_multi').width('+=' + $newN.outerWidth(true)).width();
-
-                    if (nw > $parents.closest('.simpleFilePreview_multiClip').width()) {
-                        $parents.closest('.simpleFilePreview_multiUI').find('.simpleFilePreview_shiftRight').trigger('click');
-                    }
-                }
-
-                if (this.files && this.files[0]) {
-                    var exp = new RegExp("^image\/(" + $.simpleFilePreview.previewFileTypes + ")$");
-
-                    if (exp.test(this.files[0].type.toLowerCase()) && window.FileReader) {
-                        // show preview of image file
-                        var $FR = new FileReader();
-
-                        $FR.onload = function (e) {
-                            addOrChangePreview($parents, e.target.result, '', options);
-                        };
-
-                        $FR.readAsDataURL(this.files[0]);
-                    } else {
-                        // show icon if not an image upload
-                        var m = this.files[0].type.toLowerCase().match(/^\s*[^\/]+\/([a-zA-Z0-9\-\.]+)\s*$/);
-
-                        if (m && m[1] && options.icons[m[1]]) {
-                            addOrChangePreview($parents, options.icons[m[1]], getFilename(this.value), options);
-                        } else {
-                            addOrChangePreview($parents, options.defaultIcon, getFilename(this.value), options);
-                        }
-                    }
-
-                    if (options.radio) {
-                        $parents.find('input.simpleFilePreview_radio').val($parents.context.files[0].name);
-                    }
-
-                    return this;
-                }
-
-                // Any browser not supporting the File API (and FileReader)
-
-                // Some versions of IE don't have real paths, and can't support
-                // any other way to do file preview without uploading to the server
-                // If a browser does report a valid path (IE or otherwise), then 
-                // we'll try to get the file preview
-
-                var exp = new RegExp("^(" + $.simpleFilePreview.previewFileTypes + ")$");
-
-                var ext = getFileExt(this.value);
-                ext = ext ? ext.toLowerCase() : null;
-
-                if (ext && !(/fakepath/.test(this.value.toLowerCase())) && exp.test(e)) {
-                    // older versions of IE (and some other browsers) report the local 
-                    // file path, so try to get a preview that way
-                    addOrChangePreview($parents, "file://" + this.value, '', options);
-                } else {
-                    // not an image (or using fakepath), so no preview anyway
-                    if (options.icons[ext]) {
-                        addOrChangePreview($parents, options.icons[ext], getFilename(this.value), options);
-                    } else {
-                        addOrChangePreview($parents, options.defaultIcon, getFilename(this.value), options);
-                    }
-                }
-            }
+            fileProcess(options, $(this), 'file');
         });
 
         // show or hide "remove" icon for file preview/icon
@@ -288,7 +200,7 @@ $('input[type=file]').simpleFilePreview({
             }
         });
 
-        $body.on('mouseout', '.simpleFilePreview_preview, .simpleFilePreview input.simpleFilePreview_formInput', function() {
+        $body.on('mouseout', '.simpleFilePreview_preview, .simpleFilePreview input.simpleFilePreview_formInput', function () {
             $(this).closest('.simpleFilePreview').find('.simpleFilePreview_remove').hide();
         })
 
@@ -319,7 +231,7 @@ $('input[type=file]').simpleFilePreview({
         });
 
         // shift buttons for multi-selects
-        $body.on('click', '.simpleFilePreview_shiftRight', function() {
+        $body.on('click', '.simpleFilePreview_shiftRight', function () {
             var ul = $(this).closest('.simpleFilePreview_multiUI').find('.simpleFilePreview_multi');
             var width = parseInt(ul.css('left')) + ul.width();
 
@@ -331,7 +243,7 @@ $('input[type=file]').simpleFilePreview({
             }
         });
 
-        $body.on('click', '.simpleFilePreview_shiftLeft', function() {
+        $body.on('click', '.simpleFilePreview_shiftLeft', function () {
             var ul = $(this).closest('.simpleFilePreview_multiUI').find('.simpleFilePreview_multi');
             var left = parseInt(ul.css('left'));
 
@@ -404,7 +316,7 @@ $('input[type=file]').simpleFilePreview({
             .find('.simpleFilePreview_input').show();
     };
 
-    var limit = function($this, options, add) {
+    var limit = function ($this, options, add) {
         if (!options.limit) {
             return false;
         }
@@ -419,7 +331,7 @@ $('input[type=file]').simpleFilePreview({
         }
     };
 
-    var setup = function(these, options) {
+    var setup = function (these, options) {
         var isMulti = these.is('[multiple]');
 
         // "multiple" removed because it's handled later manually
@@ -439,6 +351,7 @@ $('input[type=file]').simpleFilePreview({
             + "<span class='simpleFilePreview_remove'>" + options.removeContent + "</span>"
             + ((options.radio) ? "<input type='radio' class='simpleFilePreview_radio' name='" + options.radio.name + "' value='empty' />" : "")
             + ((options.ajaxUpload.progressbar) ? "<div class='progress simpleFilePreview_progress'><div class='progress-bar progress-bar-striped active' role='progressbar' aria-valuenow='0' aria-valuemin='0' aria-valuemax='100' style='width:0%'></div></div>" : "")
+            + ((options.contextMenu) ? '<input type="hidden" name="' + options.contextMenu.inputName + '[' + $.simpleFilePreview.linkid + ']" />' : '')
             + "</" + (isMulti ? 'li' : 'div') + ">");
 
         these.before($html);
@@ -484,6 +397,10 @@ $('input[type=file]').simpleFilePreview({
             for (var i in exists) {
                 var ni = $.simpleFilePreview.uid++;
                 var nn = $html.clone(true).attr('id', "simpleFilePreview_" + ni);
+
+                if (options.contextMenu) {
+                    nn.find('[name^="' + options.contextMenu.inputName + '"]').attr('name', options.contextMenu.inputName + '[' + ++$.simpleFilePreview.linkid + ']').val('');
+                }
 
                 nn.addClass('simpleFilePreview_existing')
                     .attr('data-sfprid', arr ? exists[i] : i)
@@ -551,9 +468,9 @@ $('input[type=file]').simpleFilePreview({
         return these;
     };
 
-    var addOrChangePreview = function($parents, src, filename, options) {
+    var addOrChangePreview = function ($parents, src, filename, options) {
         filename = filename ? filename : null;
-        src = ((new RegExp('[/\\\\]')).test(src) ? '' : (options.iconPath)) + src
+        src = ((new RegExp('^(http|https)://').test(src)) ? src : (((new RegExp('[/\\\\]')).test(src) ? '' : (options.iconPath)) + src));
 
         $parents.find('.simpleFilePreview_input').hide();
 
@@ -587,7 +504,7 @@ $('input[type=file]').simpleFilePreview({
         }
     };
 
-    var getFilename = function($parents) {
+    var getFilename = function ($parents) {
         var m = $parents.match(/[\/\\]([^\/\\]+)$/);
 
         if (m && m[1] && m[1].length) {
@@ -597,7 +514,7 @@ $('input[type=file]').simpleFilePreview({
         return null;
     };
 
-    var getFileExt = function($parents) {
+    var getFileExt = function ($parents) {
         var m = $parents.match(/[\.]([^\/\\\.]+)$/);
 
         if (m && m[1] && m[1].length) {
@@ -607,9 +524,189 @@ $('input[type=file]').simpleFilePreview({
         return null;
     };
 
+    var openLinkDialog = function (e, options) {
+        var $dialog = $('#' + options.contextMenu.id);
+        $dialog.dialog('option',
+            'buttons', [{
+                text: options.contextMenu.ok,
+                click: function () {
+                    var $element = $(((options.parentSelector) ? options.parentSelector : 'body') + ' li:has(a.simpleFilePreview_input:visible) input[name^="' +options.contextMenu.inputName + '"]');
+                    $element.val($('#' + options.contextMenu.id + '_link').val());
+                    fileProcess(options, $element, 'link');
+                    $(this).dialog("close");
+                }
+            }, {
+                text: options.contextMenu.cancel,
+                click: function () {
+                    $(this).dialog("close");
+                }
+            }]);
+        $dialog.dialog("open");
+    };
+
+    var fileProcess = function (options, $this, type) {
+        if (!options.readOnly) {
+            var _this = $this.get()[0];
+            if (options.ajaxUpload) {
+                var fd = new FormData();
+                var cutNameToken = _this.name.indexOf('[');
+                var value = ((type == 'file') ? _this.files[0] : ((type == 'link') ? $this.val() : ''));
+                if (cutNameToken > -1) {
+                    fd.append(_this.name.substr(0, cutNameToken), value);
+                } else {
+                    fd.append(_this.name, value);
+                }
+
+                if (options.ajaxUpload.compose) {
+                    options.ajaxUpload.compose(fd);
+                }
+
+                if (options.ajaxUpload.progressbar) {
+                    $this.parent().find('.simpleFilePreview_progress').show();
+                }
+
+                $.ajax({
+                    url: options.ajaxUpload.url,
+                    type: "POST",
+                    data: fd,
+                    dataType: 'json',
+                    contentType: false,
+                    processData: false,
+                    success: function (data, textStatus, jqXHR) {
+                        if (options.ajaxUpload.progressbar) {
+                            $this.parent().find('.simpleFilePreview_progress').hide();
+                        }
+                        if (options.ajaxUpload.success) {
+                            options.ajaxUpload.success(data, textStatus, jqXHR, _this);
+                        }
+                    },
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        if (options.ajaxUpload.progressbar) {
+                            $this.parent().find('.simpleFilePreview_progress').hide();
+                        }
+                        if (options.ajaxUpload.error) {
+                            options.ajaxUpload.error(jqXHR, textStatus, errorThrown, _this);
+                        }
+                    },
+                    xhr: function () {
+                        var xhr = new window.XMLHttpRequest();
+                        //Upload progress
+                        xhr.upload.addEventListener("progress", function (evt) {
+                            if (evt.lengthComputable && options.ajaxUpload.progressbar) {
+                                var percentComplete = evt.loaded * 100 / evt.total;
+                                var progressbar = $this.parent().find('.simpleFilePreview_progress div');
+                                progressbar.css({ width: percentComplete + '%' }).attr('aria-valuenow', percentComplete);
+                            }
+                        }, false);
+                        return xhr;
+                    }
+                });
+            }
+
+            var $parents = $this.closest('.simpleFilePreview');
+
+            // if it's a multi-select, add another selection box to the end
+            // NOTE: this is done first since we clone the previous input
+            // NOTE: the second check is there because IE 8 fires multiple change events for no good reason
+            if (($parents.attr('data-sfpallowmultiple') == 1) && !$parents.find('.simpleFilePreview_preview').length) {
+                var newId = $.simpleFilePreview.uid++;
+                var $newN = $parents.clone(true).attr('id', "simpleFilePreview_" +newId);
+
+                if (options.contextMenu) {
+                    $newN.find('[name^="' + options.contextMenu.inputName + '"]').attr('name', options.contextMenu.inputName + '[' + ++$.simpleFilePreview.linkid + ']').val('');
+                }
+
+                if (options.ajaxUpload.progressbar) {
+                    $newN.find('.simpleFilePreview_progress').hide();
+                }
+
+                $newN.find('input.simpleFilePreview_formInput')
+                    .attr('id', $newN.find('input.simpleFilePreview_formInput').attr('id') + '_' + newId)
+                    .attr('name', function (index, previousValue) {
+                        var previousName = $parents.find('input.simpleFilePreview_formInput').attr('name');
+                        var inputIndex = parseInt(previousName.substring(previousName.indexOf('[') + 1, previousName.indexOf(']')));
+                        return (!isNaN(inputIndex)) ? previousName.substring(0, previousName.indexOf('[') + 1) + ++inputIndex + previousName.substring(previousName.indexOf(']')) : previousValue;
+                    })
+                    .val('');
+
+                $parents.after($newN);
+
+                var nw = $parents.closest('.simpleFilePreview_multi').width('+=' + $newN.outerWidth(true)).width();
+
+                if (nw > $parents.closest('.simpleFilePreview_multiClip').width()) {
+                    $parents.closest('.simpleFilePreview_multiUI').find('.simpleFilePreview_shiftRight').trigger('click');
+                }
+            }
+
+            var ext = getFileExt(_this.value);
+            ext = ext ? ext.toLowerCase(): null;
+
+            if ((type == 'file') && _this.files && _this.files[0]) {
+                var exp = new RegExp("^image\/(" + $.simpleFilePreview.previewFileTypes + ")$");
+
+                if (exp.test(_this.files[0].type.toLowerCase()) && window.FileReader) {
+                    // show preview of image file
+                    var $FR = new FileReader();
+
+                    $FR.onload = function (e) {
+                        addOrChangePreview($parents, e.target.result, '', options);
+                    };
+
+                    $FR.readAsDataURL(_this.files[0]);
+                } else {
+                    // show icon if not an image upload
+                    var m = _this.files[0].type.toLowerCase().match(/^\s*[^\/]+\/([a-zA-Z0-9\-\.]+)\s*$/);
+
+                    if (m && m[1] && options.icons[m[1]]) {
+                        addOrChangePreview($parents, options.icons[m[1]], getFilename(_this.value), options);
+                    } else {
+                        addOrChangePreview($parents, options.defaultIcon, getFilename(_this.value), options);
+                    }
+                }
+
+                if (options.radio) {
+                    $parents.find('input.simpleFilePreview_radio').val($parents.context.files[0].name);
+                }
+
+                return _this;
+            }
+
+            if (type == 'file') {
+                // Any browser not supporting the File API (and FileReader)
+                // Some versions of IE don't have real paths, and can't support
+                // any other way to do file preview without uploading to the server
+                // If a browser does report a valid path (IE or otherwise), then 
+                // we'll try to get the file preview
+                var exp = new RegExp("^(" +$.simpleFilePreview.previewFileTypes + ")$");
+
+                if (ext && !(/fakepath/.test(_this.value.toLowerCase())) && exp.test(e)) {
+                    // older versions of IE (and some other browsers) report the local 
+                    // file path, so try to get a preview that way
+                    addOrChangePreview($parents, "file://" +_this.value, '', options);
+                } else {
+                    // not an image (or using fakepath), so no preview anyway
+                    if (options.icons[ext]) {
+                        addOrChangePreview($parents, options.icons[ext], getFilename(_this.value), options);
+                    } else {
+                        addOrChangePreview($parents, options.defaultIcon, getFilename(_this.value), options);
+                    }
+                }
+            }
+
+            if (type == 'link') {
+                var exp = new RegExp("^(" + $.simpleFilePreview.previewFileTypes + ")$");
+                if (exp.test(ext)) {
+                    addOrChangePreview($parents, $this.val(), '', options);
+                } else {
+                    addOrChangePreview($parents, ((options.icons[ext]) ? options.icons[ext] : options.defaultIcon), getFilename(_this.value), options);
+                }
+            }
+        }
+    };
+
     // Static properties
     $.simpleFilePreview = {
-        defaults: {
+            defaults: {
             'buttonContent': 'Add File',
             'removeContent': 'X',
             'existingFiles': null, // array or object. if object, key is used in the remove hidden input
@@ -621,12 +718,14 @@ $('input[type=file]').simpleFilePreview({
             'removeMessage': {
                 'prefix': 'Remove',
                 'stub': 'this file',
-            },
+        },
             'radio': null,
             'readOnly': false,
             'ajaxUpload': null,
             'beforeRemove': null,
             'removeDialog': null,
+            'contextMenu': null,
+            'parentSelector': null,
             'icons': {
                 'png': 'preview_png.png',
                 'gif': 'preview_png.png',
@@ -665,9 +764,10 @@ $('input[type=file]').simpleFilePreview({
                 'x-excel': 'preview_xls.png',
                 'x-ms-excel': 'preview_xls.png',
                 'vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'preview_xls.png'
-            }
-        },
+        }
+    },
         uid: 0,
+        linkid: 0,
         init: false,
         previewFileTypes: 'p?jpe?g|png|gif|bmp|svg'
     };
