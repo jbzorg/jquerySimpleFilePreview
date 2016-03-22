@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015 Jordan Kasper, 2015 eusonlito, 2015 Alexei Ivashkevich
+/* Copyright (c) 2012-2015 Jordan Kasper, 2015 eusonlito, 2015-2016 Alexei Ivashkevich
 * Licensed under the MIT (http://www.opensource.org/licenses/mit-license.php)
 * Copyright notice and license must remain intact for legal use
 * Requires: jQuery 1.9.1+
@@ -698,7 +698,7 @@ $('input[type=file]').simpleFilePreview({
                 if (exp.test(ext)) {
                     addOrChangePreview($parents, $this.val(), '', options);
                 } else {
-                    addOrChangePreview($parents, ((options.icons[ext]) ? options.icons[ext] : options.defaultIcon), getFilename(_this.value), options);
+                    addOrChangePreview($parents, _this.value, getFilename(_this.value), options);
                 }
             }
         }
