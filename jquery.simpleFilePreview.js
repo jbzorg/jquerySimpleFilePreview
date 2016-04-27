@@ -75,6 +75,7 @@ $('input[type=file]').simpleFilePreview({
         'options': object                    // jQuery UI Dialog options
     },
     'parentSelector': string,                // Parent selector for component
+    'defaultOpen': 'file',                   // Default action on left button click: open file (file) or open link (link)
 });
 * 
 * TODO:
@@ -178,7 +179,7 @@ $('input[type=file]').simpleFilePreview({
             {
                 text: options.contextMenu.fileText,
                 action: function (e) {
-                    $(selector).find('.simpleFilePreview_input').trigger('click');
+                    openFileDialog(e, options, selector);
                 }
             }, {
                 text: options.contextMenu.linkText,
@@ -196,8 +197,11 @@ $('input[type=file]').simpleFilePreview({
 
         // open file browser dialog on click of styled "button"
         $body.on('click', '.simpleFilePreview_input', function (e) {
-            $(this).closest('.simpleFilePreview').find('input.simpleFilePreview_formInput').trigger('click');
-            e.preventDefault();
+            if (options.defaultOpen == 'link') {
+                openLinkDialog(e, options);
+            } else {
+                openFileDialog(e, options, e.currentTarget);
+            }
         });
 
         // on click of the actual input (which is invisible), check to see if 
@@ -391,13 +395,6 @@ $('input[type=file]').simpleFilePreview({
             $html.hide();
         }
 
-        // mostly for IE, the file input must be sized the same as the container, 
-        // opacity 0, and z-indexed above other elements within the preview container
-        these.css({
-            width: ($html.width() + 'px'),
-            height: (($html.height() - ((options.radio) ? 20 : 0)) + 'px')
-        });
-
         // if it's a multi-select we use multiple separate inputs instead to support file preview
         if (isMulti) {
             $html.wrap("<div class='simpleFilePreview_multiUI simpleFilePreview_body'><div class='simpleFilePreview_multiClip'><ul class='simpleFilePreview_multi" + ((options.radio) ? " simpleFilePreview_withRadio" : "") + "'></ul></div></div>");
@@ -557,6 +554,11 @@ $('input[type=file]').simpleFilePreview({
     var openLinkDialog = function (e, options) {
         window.scrollTo(0, 0);
         $('#' + options.contextMenu.id).dialog("open");
+    };
+
+    var openFileDialog = function (e, options, that) {
+        $(that).closest('.simpleFilePreview').find('input.simpleFilePreview_formInput').trigger('click');
+        e.preventDefault();
     };
 
     var fileProcess = function (options, $this, type) {
@@ -741,6 +743,7 @@ $('input[type=file]').simpleFilePreview({
             'removeDialog': null,
             'contextMenu': null,
             'parentSelector': null,
+            'defaultOpen': 'file',
             'icons': {
                 'png': 'preview_png.png',
                 'gif': 'preview_png.png',
