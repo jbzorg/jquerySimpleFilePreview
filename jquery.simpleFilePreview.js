@@ -60,6 +60,7 @@ $('input[type=file]').simpleFilePreview({
         'text': string,                      // Body text
         'ok': string,                        // Text for OK button
         'cancel': string,                    // Text for Cancel button
+        'options': object                    // jQuery UI Dialog options
     },
     'contextMenu': {                         // Context menu for select file source
         'fileText': string,                  // Text for file option
@@ -71,6 +72,7 @@ $('input[type=file]').simpleFilePreview({
         'ok': string,                        // Text for OK button
         'cancel': string,                    // Text for Cancel button
         'inputName': string                  // Name of hidden input element
+        'options': object                    // jQuery UI Dialog options
     },
     'parentSelector': string,                // Parent selector for component
 });
@@ -93,7 +95,7 @@ $('input[type=file]').simpleFilePreview({
 
         // Set up options (and defaults)
         options = options ? options : {};
-        options = $.extend({}, $.simpleFilePreview.defaults, options);
+        options = $.extend(true, {}, $.simpleFilePreview.defaults, options);
 
         // read only mode and radio button incompatible
         if (options.readOnly) {
@@ -106,15 +108,16 @@ $('input[type=file]').simpleFilePreview({
             if (!options.removeDialog.text) { options.removeDialog.text = 'Are you sure?'; }
             if (!options.removeDialog.ok) { options.removeDialog.ok = 'Ok'; }
             if (!options.removeDialog.cancel) { options.removeDialog.cancel = 'Cancel'; }
+            if (!options.removeDialog.options) { options.removeDialog.options = {}; }
 
             $('<div id="' + options.removeDialog.id + '" title="' + options.removeDialog.title + '"><p>' +
                 '<span class="ui-icon ui-icon-alert"></span>' +
                 options.removeDialog.text +
-                '</p></div>').dialog({
+                '</p></div>').dialog($.extend({
                     autoOpen: false,
                     resizable: false,
-                    modal: true,
-                });
+                    modal: true
+                }, options.removeDialog.options));
         }
 
         if (options.contextMenu) {
@@ -127,36 +130,62 @@ $('input[type=file]').simpleFilePreview({
             if (!options.contextMenu.ok) { options.contextMenu.ok = 'Ok'; }
             if (!options.contextMenu.cancel) { options.contextMenu.cancel = 'Cancel'; }
             if (!options.contextMenu.inputName) { options.contextMenu.inputName = 'input_openlink_dialog'; }
+            if (!options.contextMenu.options) { options.contextMenu.options = {}; }
 
+            var $gbody = $('body');
+            var gbodyOverflow = $gbody.css('overflow');
             $('<div id="' + options.contextMenu.id + '" title="' + options.contextMenu.title + '"><p>' +
                 options.contextMenu.text +
                 '<form><fieldset>' +
                 '<label for="' + options.contextMenu.id + '_link">' + options.contextMenu.optionName + '</label>' +
                 '<input type="text" name="link" id="' + options.contextMenu.id + '_link" class="text ui-widget-content ui-corner-all">' +
                 '</fieldset></form>' +
-                '</p></div>').dialog({
+                '</p></div>').dialog($.extend({
                     autoOpen: false,
                     resizable: false,
                     modal: true,
-                });
+                    position: { my: "center", at: "center", of: window },
+                    open: function (event, ui) {
+                        gbodyOverflow = $gbody.css('overflow');
+                        $gbody.css('overflow', 'hidden');
+                    },
+                    close: function (event, ui) {
+                        $gbody.css('overflow', gbodyOverflow);
+                    },
+                    buttons: [
+                    {
+                        text: options.contextMenu.ok,
+                        click: function () {
+                            var $element = $(((options.parentSelector) ? options.parentSelector : 'body') + ' li:has(a.simpleFilePreview_input:visible) input[name^="' + options.contextMenu.inputName + '"]');
+                            var $link = $('#' + options.contextMenu.id + '_link');
+                            $element.val($link.val());
+                            fileProcess(options, $element, 'link');
+                            $link.val("");
+                            $(this).dialog("close");
+                        }
+                    }, {
+                        text: options.contextMenu.cancel,
+                        click: function () {
+                            $(this).dialog("close");
+                        }
+                    }]
+                }, options.contextMenu.options));
 
             var selector = ((options.parentSelector) ? options.parentSelector : 'body') + ' li:has(a.simpleFilePreview_input:visible)';
             context.init({ preventDoubleContext: false });
             context.settings({ compress: true });
             context.attach(selector, [
-                {
-                    text: options.contextMenu.fileText,
-                    action: function (e) {
-                        $(selector).find('.simpleFilePreview_input').trigger('click');
-                    }
-                },
-                {
-                    text: options.contextMenu.linkText,
-                    action: function (e) {
-                        openLinkDialog(e, options);
-                    }
-                },
-            ]);
+            {
+                text: options.contextMenu.fileText,
+                action: function (e) {
+                    $(selector).find('.simpleFilePreview_input').trigger('click');
+                }
+            }, {
+                text: options.contextMenu.linkText,
+                action: function (e) {
+                    openLinkDialog(e, options);
+                }
+            }]);
         }
 
         this.each(function () {
@@ -526,34 +555,8 @@ $('input[type=file]').simpleFilePreview({
     };
 
     var openLinkDialog = function (e, options) {
-        var $dialog = $('#' + options.contextMenu.id);
-        var $body = $('body');
-        var bodyOverflow = $body.css('overflow');
-        $dialog.dialog({
-            buttons: [{
-                text: options.contextMenu.ok,
-                click: function () {
-                    var $element = $(((options.parentSelector) ? options.parentSelector : 'body') + ' li:has(a.simpleFilePreview_input:visible) input[name^="' + options.contextMenu.inputName + '"]');
-                    $element.val($('#' + options.contextMenu.id + '_link').val());
-                    fileProcess(options, $element, 'link');
-                    $(this).dialog("close");
-                }
-            }, {
-                text: options.contextMenu.cancel,
-                click: function () {
-                    $(this).dialog("close");
-                }
-            }],
-            position: { my: "center", at: "center", of: window },
-            open: function (event, ui) {
-                $body.css('overflow', 'hidden');
-            },
-            close: function (event, ui) {
-                $body.css('overflow', bodyOverflow);
-            },
-        });
         window.scrollTo(0, 0);
-        $dialog.dialog("open");
+        $('#' + options.contextMenu.id).dialog("open");
     };
 
     var fileProcess = function (options, $this, type) {
@@ -730,7 +733,7 @@ $('input[type=file]').simpleFilePreview({
             'removeMessage': {
                 'prefix': 'Remove',
                 'stub': 'this file',
-        },
+            },
             'radio': null,
             'readOnly': false,
             'ajaxUpload': null,
@@ -776,8 +779,8 @@ $('input[type=file]').simpleFilePreview({
                 'x-excel': 'preview_xls.png',
                 'x-ms-excel': 'preview_xls.png',
                 'vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'preview_xls.png'
-        }
-    },
+            }
+        },
         uid: 0,
         linkid: 0,
         init: false,
