@@ -4,6 +4,7 @@
 * Requires: jQuery 1.9.1+
 *           Bootstrap 3.3.4+ (for progressbar only)
 *           jQuery UI 1.11.4+ (for dialog only)    
+*           context.js 1.0.1 (for context menu only)
 *
 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
 * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
@@ -526,11 +527,13 @@ $('input[type=file]').simpleFilePreview({
 
     var openLinkDialog = function (e, options) {
         var $dialog = $('#' + options.contextMenu.id);
-        $dialog.dialog('option',
-            'buttons', [{
+        var $body = $('body');
+        var bodyOverflow = $body.css('overflow');
+        $dialog.dialog({
+            buttons: [{
                 text: options.contextMenu.ok,
                 click: function () {
-                    var $element = $(((options.parentSelector) ? options.parentSelector : 'body') + ' li:has(a.simpleFilePreview_input:visible) input[name^="' +options.contextMenu.inputName + '"]');
+                    var $element = $(((options.parentSelector) ? options.parentSelector : 'body') + ' li:has(a.simpleFilePreview_input:visible) input[name^="' + options.contextMenu.inputName + '"]');
                     $element.val($('#' + options.contextMenu.id + '_link').val());
                     fileProcess(options, $element, 'link');
                     $(this).dialog("close");
@@ -540,7 +543,16 @@ $('input[type=file]').simpleFilePreview({
                 click: function () {
                     $(this).dialog("close");
                 }
-            }]);
+            }],
+            position: { my: "center", at: "center", of: window },
+            open: function (event, ui) {
+                $body.css('overflow', 'hidden');
+            },
+            close: function (event, ui) {
+                $body.css('overflow', bodyOverflow);
+            },
+        });
+        window.scrollTo(0, 0);
         $dialog.dialog("open");
     };
 
